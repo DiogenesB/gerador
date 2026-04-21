@@ -573,46 +573,48 @@ async function gerarStoryFoto(nome,slogan,preco,parcelas,textocentro,cta){
 
   // 2. LOGO
   const logoImg=await loadImg('data:image/jpeg;base64,'+LOGO_B64);
-  drawLogo(ctx,logoImg,W/2,200,148,{logoBg:'#fff',logoStroke:'#c09040',goldD:'#c09040'});
+  drawLogo(ctx,logoImg,W/2,100,76,{logoBg:'#fff',logoStroke:'#c09040',goldD:'#c09040'});
 
-  // 3. CALCULAR CARD primeiro para definir onde a foto termina
+  // 3. FOTO — contain real: escala para caber na largura, altura proporcional
+  const fotoTop=195;
+  const fotoMaxW=W-30; // 40px margem em cada lado
+  const fotoMaxH=1100;  // altura máxima permitida
+  // Contain: escala pela menor razão para caber sem corte
+  const fscC=Math.min(fotoMaxW/iw, fotoMaxH/ih);
+  const fImgW=Math.round(iw*fscC);
+  const fImgH=Math.round(ih*fscC);
+  const fdx=Math.round((W-fImgW)/2);
+  const fdy=fotoTop;
+
+  // Desenhar a foto no tamanho real (sem container maior)
+  ctx.save();
+  rr(ctx,fdx,fdy,fImgW,fImgH,20);
+  ctx.clip();
+  ctx.drawImage(perfImg,fdx,fdy,fImgW,fImgH);
+  ctx.restore();
+
+  // 4. CARD — compacto, elegante, sobrepõe 60px na foto
   const textoExibir=textocentro||slogan||'';
-  ctx.font='400 38px Georgia,serif';
-  const lns=textoExibir?wrapLines(ctx,textoExibir,W-200):[];
+  ctx.font='italic 400 36px Georgia,serif';
+  const lns=textoExibir?wrapLines(ctx,textoExibir,W-240):[];
 
   const cardMargX=40;
   const cardW=W-cardMargX*2;
-  const cardR=28;
-  const cardPadTop=72;
-  const cardPadBot=64;
-  const nomeH=76;
-  const linhaH=32;
-  const textoH=lns.length>0?(lns.length*56+20):0;
-  const precoH=preco?280:0;
-  const ctaH=108;
+  const cardR=32;
+  const cardPadTop=52;
+  const cardPadBot=52;
+  const nomeH=72;
+  const linhaH=28;
+  const textoH=lns.length>0?(lns.length*50+16):0;
+  const precoH=preco?248:0;
+  const ctaH=100;
   const cardH=cardPadTop+nomeH+linhaH+textoH+precoH+ctaH+cardPadBot;
-  const cardTop=H-cardH-90;
+  const cardTop=fotoTop+fImgH-50;
   const cardX=cardMargX;
 
-  // 4. FOTO — ocupa toda a área do logo até o card, com bordas arredondadas
-  const fotoTop=390;
-  const fotoBottom=cardTop+50; // 50px de sobreposição no card
-  const fotoAreaH=fotoBottom-fotoTop;
-  const fotoMaxW=W-80;
-  const fsc=Math.min(fotoMaxW/iw, fotoAreaH/ih);
-  const fdw=Math.round(iw*fsc), fdh=Math.round(ih*fsc);
-  const fdx=Math.round((W-fdw)/2);
-  const fdy=fotoTop;
-
+  // 5. CARD BRANCO
   ctx.save();
-  rr(ctx,fdx,fdy,fdw,Math.min(fdh,fotoAreaH),20);
-  ctx.clip();
-  ctx.drawImage(perfImg,fdx,fdy,fdw,Math.min(fdh,fotoAreaH));
-  ctx.restore();
-
-  // 5. CARD BRANCO arredondado
-  ctx.save();
-  ctx.shadowColor='rgba(0,0,0,0.22)';ctx.shadowBlur=48;ctx.shadowOffsetY=-6;
+  ctx.shadowColor='rgba(0,0,0,0.20)';ctx.shadowBlur=50;ctx.shadowOffsetY=-8;
   rr(ctx,cardX,cardTop,cardW,cardH,cardR);
   ctx.fillStyle='rgba(253,250,244,0.98)';ctx.fill();
   ctx.restore();
@@ -621,54 +623,54 @@ async function gerarStoryFoto(nome,slogan,preco,parcelas,textocentro,cta){
   let cY=cardTop+cardPadTop;
   ctx.textAlign='center';
 
-  // Nome
-  const nFS=fitFont(ctx,nome,cardW-80,76,30,'bold %%px Georgia,serif');
+  // Nome — elegante, bold dourado escuro
+  const nFS=fitFont(ctx,nome,cardW-80,80,32,'bold %%px Georgia,serif');
   ctx.font=`bold ${nFS}px Georgia,serif`;
   ctx.fillStyle='#6b3d00';
   ctx.fillText(nome,W/2,cY+56);
   cY+=nomeH;
 
-  // Linha dourada
-  ctx.strokeStyle='#c09040';ctx.lineWidth=1.2;
-  ctx.beginPath();ctx.moveTo(cardX+60,cY);ctx.lineTo(cardX+cardW-60,cY);ctx.stroke();
+  // Linha dourada fina
+  ctx.strokeStyle='#c09040';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cardX+80,cY);ctx.lineTo(cardX+cardW-80,cY);ctx.stroke();
   cY+=linhaH;
 
-  // Texto
+  // Texto — itálico discreto
   if(lns.length>0){
-    ctx.font='400 38px Georgia,serif';ctx.fillStyle='#2a1a08';
-    lns.forEach((l,i)=>ctx.fillText(l,W/2,cY+46+i*56));
+    ctx.font='italic 400 36px Georgia,serif';ctx.fillStyle='rgba(42,26,8,0.75)';
+    lns.forEach((l,i)=>ctx.fillText(l,W/2,cY+42+i*50));
     cY+=textoH;
   }
-  cY+=8;
+  cY+=4;
 
-  // Círculo preço
+  // Círculo preço — compacto
   if(preco){
-    const cr=118, cx=W/2, cy=cY+cr+10;
+    const cr=124, cx=W/2, cy=cY+cr+6;
     ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);
     ctx.fillStyle='rgba(253,250,244,0.98)';ctx.fill();
-    ctx.save();ctx.shadowColor='rgba(192,144,64,0.22)';ctx.shadowBlur=12;
-    ctx.strokeStyle='#c09040';ctx.lineWidth=2;ctx.stroke();ctx.restore();
-    ctx.font='300 21px Arial,sans-serif';ctx.fillStyle='#7a4e00';ctx.letterSpacing='0.08em';
+    ctx.save();ctx.shadowColor='rgba(192,144,64,0.25)';ctx.shadowBlur=14;
+    ctx.strokeStyle='#c09040';ctx.lineWidth=1.8;ctx.stroke();ctx.restore();
+    ctx.font='300 22px Arial,sans-serif';ctx.fillStyle='#7a4e00';ctx.letterSpacing='0.08em';
     ctx.fillText('POR APENAS',cx,cy-50);ctx.letterSpacing='0px';
-    const pFS=fitFont(ctx,'R$'+preco,cr*1.8,72,30,'bold %%px Georgia,serif');
+    const pFS=fitFont(ctx,'R$'+preco,cr*1.75,78,30,'bold %%px Georgia,serif');
     ctx.font=`bold ${pFS}px Georgia,serif`;ctx.fillStyle='#b8700a';
-    ctx.fillText('R$'+preco,cx,cy+22);
-    if(parcelas){ctx.font='400 22px Arial,sans-serif';ctx.fillStyle='#8a5e20';ctx.fillText(parcelas,cx,cy+56);}
-    cY+=cr*2+20;
+    ctx.fillText('R$'+preco,cx,cy+20);
+    if(parcelas){ctx.font='400 21px Arial,sans-serif';ctx.fillStyle='#8a5e20';ctx.fillText(parcelas,cx,cy+52);}
+    cY+=cr*2+16;
   }
-  cY+=8;
+  cY+=4;
 
   // Botão CTA
-  const bW=cardW-80,bH=96,bR=48;
+  const bW=cardW-80,bH=92,bR=46;
   const bX=cardX+40,bY=cY;
-  ctx.save();ctx.shadowColor='rgba(160,100,8,0.35)';ctx.shadowBlur=18;ctx.shadowOffsetY=4;
+  ctx.save();ctx.shadowColor='rgba(160,100,8,0.32)';ctx.shadowBlur=16;ctx.shadowOffsetY=4;
   rr(ctx,bX,bY,bW,bH,bR);ctx.fillStyle='#b8700a';ctx.fill();ctx.restore();
-  ctx.fillStyle='#fff';ctx.font='bold 34px Arial,sans-serif';ctx.letterSpacing='0.13em';
-  ctx.fillText(cta.toUpperCase(),W/2,bY+64);ctx.letterSpacing='0px';
+  ctx.fillStyle='#fff';ctx.font='bold 33px Arial,sans-serif';ctx.letterSpacing='0.13em';
+  ctx.fillText(cta.toUpperCase(),W/2,bY+61);ctx.letterSpacing='0px';
 
-  // Handle
-  ctx.fillStyle='rgba(255,255,255,0.52)';ctx.font='300 26px Georgia,serif';ctx.letterSpacing='0.06em';
-  ctx.fillText('@infinityessence',W/2,cardTop+cardH+54);ctx.letterSpacing='0px';
+  // Handle abaixo do card
+  ctx.fillStyle='rgba(255,255,255,0.48)';ctx.font='300 25px Georgia,serif';ctx.letterSpacing='0.06em';
+  ctx.fillText('@infinityessence',W/2,cardTop+cardH+46);ctx.letterSpacing='0px';
 
   return cv.toDataURL('image/png');
 }
