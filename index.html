@@ -70,20 +70,15 @@ canvas{border-radius:14px;display:block;box-shadow:0 40px 100px rgba(0,0,0,0.85)
   </div>
 
   <div class="panel active" id="panel-story">
-    <div class="row2">
-      <div class="field"><label>Nome</label><input type="text" id="s-nome" placeholder="Sabah Al Ward"></div>
-      <div class="field"><label>Slogan</label><input type="text" id="s-slogan" placeholder="Oriental · Feminino"></div>
-    </div>
-    <div class="field"><label>Notas olfativas</label><textarea id="s-notas" placeholder="As notas de topo são: Pimenta Rosa e Mandarina..."></textarea></div>
-    <div class="row2">
-      <div class="field"><label>Preço (R$)</label><input type="text" id="s-preco" placeholder="199,90"></div>
-      <div class="field"><label>Volume</label><input type="text" id="s-vol" placeholder="100ml EDP"></div>
-    </div>
+    <div class="field"><label>Nome</label><input type="text" id="s-nome" placeholder="Sabah Al Ward"></div>
+    <div class="field"><label>Preço (R$)</label><input type="text" id="s-preco" placeholder="199,90"></div>
     <div class="field"><label>CTA</label>
       <select id="s-cta"><option>Peça pelo direct</option><option>Link na bio</option><option>Compre agora</option><option>Últimas unidades</option><option>Encomende já</option></select>
     </div>
+    <div class="field"><label>Parcelas</label><input type="text" id="s-parcelas" placeholder="12x de R$19,01"></div>
+    <div class="field"><label>Texto central</label><textarea id="s-texto" placeholder="Perfume incrível por esse valor? Aproveita!" style="min-height:52px"></textarea></div>
     <div class="field"><label>Tema</label>
-      <select id="s-tema"><option value="cream">Creme claro</option><option value="dark">Verde escuro</option><option value="black">Preto elegante</option></select>
+      <select id="s-tema"><option value="dark">Verde escuro</option><option value="foto">Foto Real</option></select>
     </div>
   </div>
 
@@ -94,7 +89,6 @@ canvas{border-radius:14px;display:block;box-shadow:0 40px 100px rgba(0,0,0,0.85)
     </div>
     <div class="row2">
       <div class="field"><label>Categoria</label><input type="text" id="f-cat" placeholder="Feminino"></div>
-      <div class="field"><label>Volume</label><input type="text" id="f-vol" placeholder="100ml EDP"></div>
     </div>
     <div class="sec">Acordes principais (até 10)</div>
     <div class="row2" style="margin-bottom:7px">
@@ -405,27 +399,37 @@ const ESTA={
 };
 
 function drawLogo(ctx,logoImg,cx,cy,r,C){
-  ctx.save();ctx.shadowColor='rgba(0,0,0,0.45)';ctx.shadowBlur=36;ctx.shadowOffsetY=12;
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=C.logoBg;ctx.fill();ctx.restore();
-  ctx.beginPath();ctx.arc(cx,cy,r+8,0,Math.PI*2);ctx.strokeStyle=C.divLine;ctx.lineWidth=1;ctx.stroke();
-  ctx.beginPath();ctx.arc(cx,cy,r+3,0,Math.PI*2);ctx.strokeStyle=C.logoStroke;ctx.lineWidth=2;ctx.stroke();
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
+  // Sombra sob o círculo
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.40)';ctx.shadowBlur=32;ctx.shadowOffsetY=10;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle=C.logoBg;ctx.fill();
+  ctx.restore();
+
+  // Anel dourado externo
+  ctx.beginPath();ctx.arc(cx,cy,r+4,0,Math.PI*2);
+  ctx.strokeStyle=C.logoStroke;ctx.lineWidth=2.5;ctx.stroke();
+
+  // Clip circular e desenhar logo
+  ctx.save();
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
   ctx.fillStyle=C.logoBg;ctx.fill();
   if(logoImg){
-    // Usa apenas a região central da logo (sem as bordas verdes)
-    const cropRatio=0.85; // usa 62% do centro
-    const cw=logoImg.width*cropRatio, ch=logoImg.height*cropRatio;
-    const cx2=(logoImg.width-cw)/2, cy2=(logoImg.height-ch)/2;
+    // Crop central: remove bordas verdes da logo (usa 80% central)
+    const crop=0.80;
+    const sw=logoImg.width*crop, sh=logoImg.height*crop;
+    const sx=(logoImg.width-sw)/2, sy=(logoImg.height-sh)/2;
     const diam=r*2;
-    const scale=Math.min(diam/cw,diam/ch)*1.05;
-    const dw=cw*scale, dh=ch*scale;
-    // drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh)
-    ctx.drawImage(logoImg, cx2, cy2, cw, ch, cx-dw/2, cy-dh/2, dw, dh);
+    // Escalar para cobrir o diâmetro exatamente (sem over-zoom)
+    const scale=Math.min(diam/sw, diam/sh);
+    const dw=sw*scale, dh=sh*scale;
+    ctx.drawImage(logoImg, sx, sy, sw, sh, cx-dw/2, cy-dh/2, dw, dh);
   }
   ctx.restore();
 }
 
-async function gerarStory(C,nome,slogan,notas,preco,vol,cta){
+async function gerarStory(C,nome,slogan,notas,preco,vol,cta,parcelas,textocentro,themeKey){
+  if(themeKey==='foto') return gerarStoryFoto(nome,slogan,preco,parcelas,textocentro,cta);
   const cv=document.getElementById('cv');
   const ctx=cv.getContext('2d');
   const W=1080,H=1920;
@@ -480,7 +484,7 @@ async function gerarStory(C,nome,slogan,notas,preco,vol,cta){
   ctx.textAlign='center';
   let cY=imgY+imgH+6;
 
-  const nFS=fitFont(ctx,nome.toUpperCase(),W-100,88,30,'bold %%px Georgia,serif');
+  const nFS=fitFont(ctx,nome.toUpperCase(),W-180,88,24,'bold %%px Georgia,serif');
   ctx.font=`bold ${nFS}px Georgia,serif`;
   ctx.save();ctx.shadowColor=C.goldGlow.replace('0.2','0.6');ctx.shadowBlur=22;
   ctx.fillStyle=C.gold;ctx.fillText(nome.toUpperCase(),W/2,cY);ctx.restore();
@@ -534,10 +538,137 @@ async function gerarStory(C,nome,slogan,notas,preco,vol,cta){
   ctx.fillText(cta.toUpperCase(),W/2,cY+64);ctx.letterSpacing='0px';
   cY+=ctaH+22;
 
-  if(vol){ctx.fillStyle=C.faintest;ctx.font='300 25px Georgia,serif';ctx.fillText(vol,W/2,cY+8);}
-
   ctx.fillStyle=C.handle;ctx.font='300 26px Georgia,serif';ctx.letterSpacing='0.07em';
   ctx.fillText('@infinityessence',W/2,H-52);ctx.letterSpacing='0px';
+
+  return cv.toDataURL('image/png');
+}
+
+async function gerarStoryFoto(nome,slogan,preco,parcelas,textocentro,cta){
+  const cv=document.getElementById('cv');
+  const ctx=cv.getContext('2d');
+  const W=1080,H=1920;
+  ctx.clearRect(0,0,W,H);
+
+  const iw=perfImg.naturalWidth, ih=perfImg.naturalHeight;
+
+  // 1. FUNDO — blur por duplo downsample progressivo (sem pixelação nem tremido)
+  // Passo 1: reduzir para 25%
+  const s1W=270, s1H=480;
+  const t1=document.createElement('canvas'); t1.width=s1W; t1.height=s1H;
+  const x1=t1.getContext('2d');
+  x1.imageSmoothingEnabled=true; x1.imageSmoothingQuality='high';
+  const sc1=Math.max(s1W/iw, s1H/ih);
+  x1.drawImage(perfImg, Math.round((s1W-iw*sc1)/2), Math.round((s1H-ih*sc1)/2), Math.round(iw*sc1), Math.round(ih*sc1));
+  // Passo 2: reduzir para 12%
+  const s2W=130, s2H=230;
+  const t2=document.createElement('canvas'); t2.width=s2W; t2.height=s2H;
+  const x2=t2.getContext('2d');
+  x2.imageSmoothingEnabled=true; x2.imageSmoothingQuality='high';
+  x2.drawImage(t1, 0,0,s1W,s1H, 0,0,s2W,s2H);
+  // Ampliar para o canvas final — o duplo passo elimina pixelação e artefatos
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(t2, 0,0,s2W,s2H, 0,0,W,H);
+  ctx.fillStyle='rgba(10,8,20,0.60)';ctx.fillRect(0,0,W,H);
+
+  // 2. LOGO
+  const logoImg=await loadImg('data:image/jpeg;base64,'+LOGO_B64);
+  drawLogo(ctx,logoImg,W/2,200,148,{logoBg:'#fff',logoStroke:'#c09040',goldD:'#c09040'});
+
+  // 3. CALCULAR CARD primeiro para definir onde a foto termina
+  const textoExibir=textocentro||slogan||'';
+  ctx.font='400 38px Georgia,serif';
+  const lns=textoExibir?wrapLines(ctx,textoExibir,W-200):[];
+
+  const cardMargX=40;
+  const cardW=W-cardMargX*2;
+  const cardR=28;
+  const cardPadTop=72;
+  const cardPadBot=64;
+  const nomeH=76;
+  const linhaH=32;
+  const textoH=lns.length>0?(lns.length*56+20):0;
+  const precoH=preco?280:0;
+  const ctaH=108;
+  const cardH=cardPadTop+nomeH+linhaH+textoH+precoH+ctaH+cardPadBot;
+  const cardTop=H-cardH-90;
+  const cardX=cardMargX;
+
+  // 4. FOTO — ocupa toda a área do logo até o card, com bordas arredondadas
+  const fotoTop=390;
+  const fotoBottom=cardTop+50; // 50px de sobreposição no card
+  const fotoAreaH=fotoBottom-fotoTop;
+  const fotoMaxW=W-80;
+  const fsc=Math.min(fotoMaxW/iw, fotoAreaH/ih);
+  const fdw=Math.round(iw*fsc), fdh=Math.round(ih*fsc);
+  const fdx=Math.round((W-fdw)/2);
+  const fdy=fotoTop;
+
+  ctx.save();
+  rr(ctx,fdx,fdy,fdw,Math.min(fdh,fotoAreaH),20);
+  ctx.clip();
+  ctx.drawImage(perfImg,fdx,fdy,fdw,Math.min(fdh,fotoAreaH));
+  ctx.restore();
+
+  // 5. CARD BRANCO arredondado
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.22)';ctx.shadowBlur=48;ctx.shadowOffsetY=-6;
+  rr(ctx,cardX,cardTop,cardW,cardH,cardR);
+  ctx.fillStyle='rgba(253,250,244,0.98)';ctx.fill();
+  ctx.restore();
+
+  // 6. CONTEÚDO DO CARD
+  let cY=cardTop+cardPadTop;
+  ctx.textAlign='center';
+
+  // Nome
+  const nFS=fitFont(ctx,nome,cardW-80,76,30,'bold %%px Georgia,serif');
+  ctx.font=`bold ${nFS}px Georgia,serif`;
+  ctx.fillStyle='#6b3d00';
+  ctx.fillText(nome,W/2,cY+56);
+  cY+=nomeH;
+
+  // Linha dourada
+  ctx.strokeStyle='#c09040';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(cardX+60,cY);ctx.lineTo(cardX+cardW-60,cY);ctx.stroke();
+  cY+=linhaH;
+
+  // Texto
+  if(lns.length>0){
+    ctx.font='400 38px Georgia,serif';ctx.fillStyle='#2a1a08';
+    lns.forEach((l,i)=>ctx.fillText(l,W/2,cY+46+i*56));
+    cY+=textoH;
+  }
+  cY+=8;
+
+  // Círculo preço
+  if(preco){
+    const cr=118, cx=W/2, cy=cY+cr+10;
+    ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);
+    ctx.fillStyle='rgba(253,250,244,0.98)';ctx.fill();
+    ctx.save();ctx.shadowColor='rgba(192,144,64,0.22)';ctx.shadowBlur=12;
+    ctx.strokeStyle='#c09040';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    ctx.font='300 21px Arial,sans-serif';ctx.fillStyle='#7a4e00';ctx.letterSpacing='0.08em';
+    ctx.fillText('POR APENAS',cx,cy-50);ctx.letterSpacing='0px';
+    const pFS=fitFont(ctx,'R$'+preco,cr*1.8,72,30,'bold %%px Georgia,serif');
+    ctx.font=`bold ${pFS}px Georgia,serif`;ctx.fillStyle='#b8700a';
+    ctx.fillText('R$'+preco,cx,cy+22);
+    if(parcelas){ctx.font='400 22px Arial,sans-serif';ctx.fillStyle='#8a5e20';ctx.fillText(parcelas,cx,cy+56);}
+    cY+=cr*2+20;
+  }
+  cY+=8;
+
+  // Botão CTA
+  const bW=cardW-80,bH=96,bR=48;
+  const bX=cardX+40,bY=cY;
+  ctx.save();ctx.shadowColor='rgba(160,100,8,0.35)';ctx.shadowBlur=18;ctx.shadowOffsetY=4;
+  rr(ctx,bX,bY,bW,bH,bR);ctx.fillStyle='#b8700a';ctx.fill();ctx.restore();
+  ctx.fillStyle='#fff';ctx.font='bold 34px Arial,sans-serif';ctx.letterSpacing='0.13em';
+  ctx.fillText(cta.toUpperCase(),W/2,bY+64);ctx.letterSpacing='0px';
+
+  // Handle
+  ctx.fillStyle='rgba(255,255,255,0.52)';ctx.font='300 26px Georgia,serif';ctx.letterSpacing='0.06em';
+  ctx.fillText('@infinityessence',W/2,cardTop+cardH+54);ctx.letterSpacing='0px';
 
   return cv.toDataURL('image/png');
 }
@@ -734,17 +865,20 @@ async function gerar(){
   if(currentTab==='story'){
     const nome=document.getElementById('s-nome').value.trim()||'Perfume';
     finalURL=await gerarStory(C,nome,
-      document.getElementById('s-slogan').value.trim(),
-      document.getElementById('s-notas').value.trim(),
+      '',
+      '',
       document.getElementById('s-preco').value.trim(),
-      document.getElementById('s-vol').value.trim(),
-      document.getElementById('s-cta').value);
+      '',
+      document.getElementById('s-cta').value,
+      document.getElementById('s-parcelas').value.trim(),
+      document.getElementById('s-texto').value.trim(),
+      themeKey);
   } else {
     finalURL=await gerarFicha(C,
       document.getElementById('f-nome').value.trim()||'Perfume',
       document.getElementById('f-marca').value.trim(),
       document.getElementById('f-cat').value.trim(),
-      document.getElementById('f-vol').value.trim(),
+      '',
       [...document.querySelectorAll('.ac')].map(i=>i.value.trim()).filter(Boolean),
       document.getElementById('f-topo').value.trim(),
       document.getElementById('f-coracao').value.trim(),
